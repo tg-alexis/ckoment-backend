@@ -1,75 +1,89 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient, Prisma } from '@prisma/client';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { RequestContextService } from './request-context.service';
+import { RequestContextServiceProvider } from '../providers/request-context-service.provider';
+import { CustomRequest } from '../interfaces/custom_request';
+import { CreateOptions } from '../interfaces/services/prisma/create-options';
+import { UpdateOptions } from '../interfaces/services/prisma/update-options';
+import { DeleteOptions } from '../interfaces/services/prisma/delete-options';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private transactionLog: Array<{ model: string, action: string, data: any }> = [];
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private transactionClient: PrismaClient | null = null;
+  protected static requestContextService: RequestContextService;
 
-  /**
-   * Initializes the Prisma Client connection when the module is initialized.
-   */
+  constructor() {
+    super();
+    return new Proxy(this, {
+      get: (target, prop: string) => {
+        if (typeof target[prop] !== 'undefined') {
+          const client = target.getClient();
+
+          return typeof client[prop] === 'function'
+            ? client[prop].bind(client)
+            : client[prop];
+        }
+        return undefined;
+      },
+    });
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
 
-  /**
-   * Disconnects the Prisma Client when the module is destroyed.
-   */
   async onModuleDestroy() {
     await this.$disconnect();
   }
 
-  /**
-   * Starts a new transaction by initializing the transaction log.
-   */
-  startTransaction() {
-    this.transactionLog = [];
-    Logger.log('Transaction started');
-  }
-
-  /**
-   * Commits the current transaction by clearing the transaction log.
-   */
-  async commitTransaction() {
-    this.transactionLog = [];
-    Logger.log('Transaction committed');
-  }
-
-  /**
-   * Rolls back the current transaction by reverting all logged operations.
-   */
-  async rollbackTransaction() {
-    Logger.log('Rolling back transaction');
-    for (const log of this.transactionLog.reverse()) {
-      if (log.action === 'create') {
-        await this[log.model].delete({ where: log.data.where });
-      } else if (log.action === 'update') {
-        await this[log.model].update({ where: log.data.where, data: log.data.previousData });
-      } else if (log.action === 'delete') {
-        await this[log.model].create({ data: log.data.where });
-      }
+  private static getRequestContextService(): RequestContextService {
+    if (!PrismaService.requestContextService) {
+      PrismaService.requestContextService =
+        RequestContextServiceProvider.getService();
     }
-    this.transactionLog = [];
-    Logger.log('Transaction rolled back');
+    return PrismaService.requestContextService;
   }
 
-  /**
-   * Creates a new record in the specified model.
-   * 
-   * @param model - The name of the model.
-   * @param data - The data to create the record with.
-   * @param include - Optional include relations.
-   * @returns The created record.
-   * @throws {Error} If an error occurs while creating the record.
-   */
-  async create(model: string, data: any, include?: any, select?: any) {
+  getClient(): PrismaClient {
+    const requestContextService = PrismaService.getRequestContextService();
+  
+    if (!requestContextService) {
+      Logger.warn('RequestContextService is not initialized.');
+      return this.transactionClient || this;
+    }
+  
+    const request: CustomRequest = requestContextService.getContext();
+  
+    if (!request) {
+      Logger.warn('RequestContext is not available.');
+      return this.transactionClient || this;
+    }
+  
+    if (request.transaction && request.prismaTransaction && request.prismaTransaction.$connect) {
+      Logger.log('Using transaction client');
+      return request.prismaTransaction;
+    }
+  
+    return this.transactionClient || this;
+  } 
+
+  async create(options: CreateOptions) {
+    const { model, data, include, select } = options;
+
     try {
-      const createdData = await this[model].create({
+      const createdData = await this.getClient()[model].create({
         data,
         include,
-        select: !include ? select : undefined
+        select: !include ? select : undefined,
       });
-      this.transactionLog.push({ model, action: 'create', data: { where: { id: createdData.id } } });
       Logger.log(`Created record in ${model}`, JSON.stringify(createdData));
       return createdData;
     } catch (error) {
@@ -78,29 +92,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
-  /**
-   * Updates a record in the specified model.
-   * 
-   * @param model - The name of the model.
-   * @param where - The condition to find the record to update.
-   * @param data - The new data to update the record with.
-   * @param include - Optional include relations.
-   * @returns The updated record.
-   * @throws {Error} If an error occurs while updating the record.
-   */
-  async update(model: string, where: any, data: any, include?: any, select?: any) {
+  async update(options: UpdateOptions) {
+    const { model, where, data, include, select } = options;
+
     try {
-      const previousData = await this[model].findUnique({ where });
+      const previousData = await this.getClient()[model].findUnique({ where });
       if (!previousData) {
         throw new Error(`Record not found for update in ${model}`);
       }
-      const updatedData = await this[model].update({
+      const updatedData = await this.getClient()[model].update({
         where,
         data,
         include,
-        select: !include ? select : undefined
+        select: !include ? select : undefined,
       });
-      this.transactionLog.push({ model, action: 'update', data: { where, previousData } });
       Logger.log(`Updated record in ${model}`, JSON.stringify(updatedData));
       return updatedData;
     } catch (error) {
@@ -109,18 +114,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
-  /**
-   * Deletes a record in the specified model.
-   * 
-   * @param model - The name of the model.
-   * @param where - The condition to find the record to delete.
-   * @returns The deleted record.
-   * @throws {Error} If an error occurs while deleting the record.
-   */
-  async delete(model: string, where: any) {
+  async delete(options: DeleteOptions) {
+    const { model, where } = options;
+    
     try {
-      const deletedData = await this[model].delete({ where });
-      this.transactionLog.push({ model, action: 'delete', data: { where } });
+      const deletedData = await this.getClient()[model].delete({ where });
       Logger.log(`Deleted record in ${model}`, JSON.stringify(deletedData));
       return deletedData;
     } catch (error) {

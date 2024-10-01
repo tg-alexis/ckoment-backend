@@ -27,6 +27,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DeleteNonUsedFilesCron } from './commons/crons/delete-non-used-files.cron';
 import { AdminModule } from './resources/admin/admin.module';
 import { UserModule } from './resources/user/user.module';
+import { BootstrapService } from './commons/services/bootstrap.service';
+import { AppEntityConstraint } from './commons/decorators/match-entity.decorator';
 
 /**
  * Module principal de l'application.
@@ -37,6 +39,7 @@ import { UserModule } from './resources/user/user.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // Assure que le ConfigModule est global
+      envFilePath: '.env', // Fichier .env à charger
     }),
     ThrottlerModule.forRoot([
       {
@@ -71,6 +74,7 @@ import { UserModule } from './resources/user/user.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    BootstrapService,
     // Services principaux
     PrismaService,
     PrismaServiceProvider,
@@ -87,6 +91,7 @@ import { UserModule } from './resources/user/user.module';
     // Decorators personnalisés
     IsUniqueConstraint,
     IsDataExistsConstraint,
+    AppEntityConstraint,
     // CRONs
     DeleteNonUsedFilesCron,
   ],
@@ -106,6 +111,7 @@ import { UserModule } from './resources/user/user.module';
     StorageService,
     IsUniqueConstraint,
     IsDataExistsConstraint,
+    AppEntityConstraint,
     DeleteNonUsedFilesCron,
   ],
 })
@@ -140,9 +146,9 @@ export class AppModule implements OnModuleInit {
    */
   onModuleInit(): void {
     ViewmodelServiceProvider.setService(this.viewmodelService);
-    PrismaServiceProvider.setService(this.prismaService);
     PaginationServiceProvider.setService(this.paginationService);
     RedisServiceProvider.setService(this.redisService);
     RequestContextServiceProvider.setService(this.requestContextService);
+    PrismaServiceProvider.setService(this.prismaService);
   }
 }

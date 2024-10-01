@@ -14,6 +14,11 @@ import { AuthorizationGuard } from 'src/commons/guards/authorization.guard';
 import { SetProfile } from 'src/commons/decorators/set-profile.decorator';
 import { Profile } from 'src/commons/enums/profile.enum';
 import { AuthenticationGuard } from 'src/commons/guards/authentication.guard';
+import { VerifyOwnership } from 'src/commons/decorators/verify-ownership.decorator';
+import { ParamEntity } from 'src/commons/decorators/param-entity.decorator';
+import { CategoryEntity } from './entities/category.entity';
+import { Transaction } from 'src/commons/decorators/transaction.decorator';
+import { InvalidateCache } from 'src/commons/decorators/invalidate-cache.decorator';
 
 @ApiTags('Category')
 @ApiBearerAuth()
@@ -22,8 +27,10 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
   @Post()
+  @Transaction()
   @SetProfile(Profile.ADMIN, Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
+  @InvalidateCache(["GET-/categories-*"])
   @ApiResponse({ status: 201, type: CategoryVm })
   async create(
     @Body() createCategoryDto: CreateCategoryDto,
@@ -48,15 +55,22 @@ export class CategoryController {
   @ApiResponse({ status: 200, type: CategoryVm })
   @Cacheable()
   async findOne(
-    @ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" }) id: string,
+    //@ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" }) id: string,
+    @ParamEntity({ model: ModelMappingTable.CATEGORY, key: 'id', errorMessage: "La catégorie n'existe pas !" }) category: CategoryEntity
   ) {
-    return CategoryVm.create(await this.categoryService.findOne(id));
+    return CategoryVm.create(category);
   }
 
   @Patch(':id')
   @SetProfile(Profile.ADMIN, Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
+  @VerifyOwnership({
+    table: ModelMappingTable.CATEGORY,
+    propertyPath: "created_by",
+    target: "params",
+  })
   @ApiResponse({ status: 200, type: CategoryVm })
+  @InvalidateCache(["GET-/categories-*"])
   async update(
     @ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" })
     id: string,
@@ -70,10 +84,11 @@ export class CategoryController {
   @SetProfile(Profile.ADMIN, Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @ApiResponse({ status: 204, description: "La catégorie a été définitivement supprimée !" })
+  @InvalidateCache(["GET-/categories-*"])
   async remove(
     @ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" }) id: string
   ) {
-    await this.categoryService.remove(id);
+    await this.categoryService.delete(id);
 
     // Return success message with status code 204
     throw new HttpException("La catégorie a été définitivement supprimée !", HttpStatus.NO_CONTENT);
@@ -83,6 +98,7 @@ export class CategoryController {
   @SetProfile(Profile.ADMIN, Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @ApiResponse({ status: 200, type: CategoryVm })
+  @InvalidateCache(["GET-/categories-*"])
   async softDelete(
     @ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" }) id: string,
     @Req() req: CustomRequest
@@ -94,6 +110,7 @@ export class CategoryController {
   @SetProfile(Profile.ADMIN, Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @ApiResponse({ status: 200, type: CategoryVm })
+  @InvalidateCache(["GET-/categories-*"])
   async restore(
     @ParamId({ model: ModelMappingTable.CATEGORY, errorMessage: "La catégorie n'existe pas !" }) id: string,
     @Req() req: CustomRequest
