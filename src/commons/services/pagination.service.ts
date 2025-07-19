@@ -1,12 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { PaginationVm } from '../shared/viewmodels/pagination.vm'
-import { PrismaService } from './prisma.service'
-import { IPaginationParams } from '../interfaces/pagination-params'
-import { PaginateOptions } from '../interfaces/services/pagination/paginate-options'
+import { Injectable, Logger } from '@nestjs/common';
+import { IPaginationParams } from '../interfaces/pagination-params';
+import { PaginateOptions } from '../interfaces/services/pagination/paginate-options';
+import { PaginationVm } from '../shared/viewmodels/pagination.vm';
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class PaginationService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Retrieves paginated data based on the provided parameters.
@@ -19,14 +19,25 @@ export class PaginationService {
    * @returns A Promise that resolves to a PaginationVm object containing the paginated data.
    */
   async paginate(options: PaginateOptions): Promise<PaginationVm> {
-    let { params, where, include, searchables, select, orderBy, model } = options;
-  
+    const {
+      params,
+      where: initialWhere,
+      include,
+      searchables,
+      select,
+      orderBy: initialOrderBy,
+      model,
+    } = options;
+
+    let where = initialWhere || {};
+    let orderBy = initialOrderBy || [];
+
     const DEFAULT_LIMIT = 10;
     const DEFAULT_PAGE = 1;
-  
+
     const limit = params.limit || DEFAULT_LIMIT;
     const page = params.page || DEFAULT_PAGE;
-  
+
     if (
       params.is_deleted_too !== undefined &&
       where.deleted_at &&
@@ -34,7 +45,7 @@ export class PaginationService {
     ) {
       delete where.deleted_at;
     }
-  
+
     if (params.is_deleted_only !== undefined && params.is_deleted_only) {
       where = {
         ...where,
@@ -43,31 +54,27 @@ export class PaginationService {
         },
       };
     }
-  
+
     if (params.order) {
       const generateOrderBy = this.generateOrderBy(params);
       orderBy = [...orderBy, ...generateOrderBy];
     }
-  
+
     if (params.search && searchables) {
       where = this.generateSearchQuery(params.search, searchables, where);
     }
-  
-    const skip = params.load_previous_pages 
-      ? 0 
-      : (page - 1) * limit;
-  
-    const take = params.load_previous_pages 
-      ? page * limit 
-      : limit;
-  
+
+    const skip = params.load_previous_pages ? 0 : (page - 1) * limit;
+
+    const take = params.load_previous_pages ? page * limit : limit;
+
     if (params.all) {
       const data = await this.prisma[model].findMany({
         where,
         include,
         orderBy,
       });
-  
+
       const result: PaginationVm = {
         currentPage: 1,
         previousPage: null,
@@ -77,10 +84,10 @@ export class PaginationService {
         totalPages: 1,
         result: data,
       };
-  
+
       return result;
     }
-  
+
     Logger.log(`
       Pagination service:
       model: ${model},
@@ -93,7 +100,7 @@ export class PaginationService {
       skip: ${skip},
       take: ${take},
     `);
-  
+
     const data = await this.prisma[model].findMany({
       where,
       include,
@@ -102,22 +109,21 @@ export class PaginationService {
       select: !include ? select : undefined,
       take,
     });
-  
+
     const totalCount = await this.prisma[model].count({ where });
-  
+
     const result: PaginationVm = {
       currentPage: params.page,
       previousPage: page > 1 ? page - 1 : null,
-      nextPage: (skip + data.length < totalCount) ? page + 1 : null,
+      nextPage: skip + data.length < totalCount ? page + 1 : null,
       count: data.length,
       totalCount: totalCount,
       totalPages: Math.ceil(totalCount / limit),
       result: data,
     };
-  
+
     return result;
   }
-  
 
   /**
    * Generates an array of orderBy objects based on the provided pagination parameters.
@@ -127,31 +133,31 @@ export class PaginationService {
    * @returns An array of orderBy objects.
    */
   generateOrderBy(params: IPaginationParams): any[] {
-    let orderBy: any[] = []
+    let orderBy: any[] = [];
 
-    const order = params.order.split(',')
+    const order = params.order.split(',');
     orderBy = order.map((item) => {
-      const [key, value] = item.split(':')
-      const keys = key.split('.')
+      const [key, value] = item.split(':');
+      const keys = key.split('.');
       if (keys.length === 1) {
-        return { [keys[0]]: value }
+        return { [keys[0]]: value };
       } else {
         // Creating nested objects for keys like 'category.name'
-        let nestedObject = {}
-        let currentLevel = nestedObject
+        const nestedObject = {};
+        let currentLevel = nestedObject;
         keys.forEach((k, index) => {
           if (index === keys.length - 1) {
-            currentLevel[k] = value
+            currentLevel[k] = value;
           } else {
-            currentLevel[k] = {}
-            currentLevel = currentLevel[k]
+            currentLevel[k] = {};
+            currentLevel = currentLevel[k];
           }
-        })
-        return nestedObject
+        });
+        return nestedObject;
       }
-    })
+    });
 
-    return orderBy
+    return orderBy;
   }
 
   /**
@@ -180,7 +186,7 @@ export class PaginationService {
    * If the initial where clause is empty or the another where clause is empty, the initial where clause is returned.
    * If the initial where clause does not have an OR property, the another where clause is added as the OR property.
    * If the initial where clause already has an OR property, the another where clause is appended to the existing OR property.
-   * 
+   *
    * @param initialWhere - The initial where clause.
    * @param anotherWhere - The another where clause to merge.
    * @returns The merged OR where clause.
@@ -199,7 +205,7 @@ export class PaginationService {
 
     return {
       ...initialWhere,
-      OR: [...initialWhere.OR, ...anotherWhere.OR]
+      OR: [...initialWhere.OR, ...anotherWhere.OR],
     };
   }
 
@@ -210,7 +216,11 @@ export class PaginationService {
    * @param currentWhere - The current where clause to merge the search conditions with.
    * @returns The merged where clause with the search conditions.
    */
-  generateSearchQuery(search: string, searchables: string[], currentWhere: any): any {
+  generateSearchQuery(
+    search: string,
+    searchables: string[],
+    currentWhere: any,
+  ): any {
     Logger.log(`Searching for ${search} in ${searchables.join(', ')}`);
     const searchConditions = searchables.map((searchable) => {
       const path = searchable.split('.');

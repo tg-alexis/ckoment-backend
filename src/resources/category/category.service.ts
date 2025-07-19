@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { IPaginationParams } from 'src/commons/interfaces/pagination-params';
+import { BaseCRUDService } from 'src/commons/services/base_crud.service';
+import { PrismaService } from 'src/commons/services/prisma.service';
+import { SlugService } from 'src/commons/services/slug.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryEntity } from './entities/category.entity';
-import { BaseCRUDService } from 'src/commons/services/base_crud.service';
-import { SlugService } from 'src/commons/services/slug.service';
-import { IPaginationParams } from 'src/commons/interfaces/pagination-params';
-import { PrismaService } from 'src/commons/services/prisma.service';
 
 @Injectable()
 export class CategoryService extends BaseCRUDService<CategoryEntity> {
@@ -23,9 +23,9 @@ export class CategoryService extends BaseCRUDService<CategoryEntity> {
     return this.genericCreate({
       data: {
         ...createCategoryDto,
-        slug
+        slug,
       },
-      connectedUserId
+      connectedUserId,
     });
   }
 
@@ -37,20 +37,30 @@ export class CategoryService extends BaseCRUDService<CategoryEntity> {
     return this.genericFindOne({ id });
   }
 
-  findOneBy(whereClause: any, include?: any, select?: any): Promise<CategoryEntity> {
+  findOneBy(
+    whereClause: any,
+    include?: any,
+    select?: any,
+  ): Promise<CategoryEntity> {
     return this.genericFindOneBy({ whereClause, include, select });
   }
 
-  update(id: string, updateCategoryDto: UpdateCategoryDto, connectedUserId?: string) {
-    let slug = updateCategoryDto.name ? this.slugService.slugify(updateCategoryDto.name) : undefined;
+  update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+    connectedUserId?: string,
+  ) {
+    const slug = updateCategoryDto.name
+      ? this.slugService.slugify(updateCategoryDto.name)
+      : undefined;
 
     return this.genericUpdate({
       id,
       data: {
         ...updateCategoryDto,
-        slug
+        slug,
       },
-      connectedUserId
+      connectedUserId,
     });
   }
 
@@ -59,18 +69,24 @@ export class CategoryService extends BaseCRUDService<CategoryEntity> {
   }
 
   softDelete(id: string, connectedUserId?: string) {
-    return this.genericSoftDelete({id, connectedUserId});
+    return this.genericSoftDelete({ id, connectedUserId });
   }
 
   restore(id: string, connectedUserId?: string) {
-    return this.genericRestore({id, connectedUserId});
+    return this.genericRestore({ id, connectedUserId });
   }
 
   async count(whereClause?: any): Promise<number> {
     return this.genericCount(whereClause);
   }
 
-  async groupBy(by: any, whereClause?: any, orderBy?: any, skip?: number, take?: number): Promise<any> {
-    return this.genericGroupBy({by, whereClause, orderBy, skip, take});
+  async groupBy(
+    by: any,
+    whereClause?: any,
+    orderBy?: any,
+    skip?: number,
+    take?: number,
+  ): Promise<any> {
+    return this.genericGroupBy({ by, whereClause, orderBy, skip, take });
   }
 }

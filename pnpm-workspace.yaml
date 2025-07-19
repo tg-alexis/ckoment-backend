@@ -1,0 +1,12 @@
+onlyBuiltDependencies:
+  - '@compodoc/compodoc'
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@scarf/scarf'
+  - argon2
+  - aws-sdk
+  - bcrypt
+  - prisma
+  - sharp
+  - unrs-resolver

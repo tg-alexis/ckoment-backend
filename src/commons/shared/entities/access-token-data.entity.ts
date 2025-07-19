@@ -1,4 +1,4 @@
-import { UserData } from "./user-data.entity";
+import { UserData } from './user-data.entity';
 
 export class AccessTokenData {
   sub: UserData;

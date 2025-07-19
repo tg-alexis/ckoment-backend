@@ -1,7 +1,6 @@
 import { Profile } from 'src/commons/enums/profile.enum';
 
 export class UserData {
-
   id: string;
   firstname: string;
   lastname: string;

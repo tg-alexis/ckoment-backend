@@ -1,20 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import * as jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 
 @Injectable()
 export class SecurityService {
-  constructor() { }
+  constructor() {}
 
   /**
    * Signs a JSON Web Token (JWT) with the given data and secret.
    *
-   * @param data - The payload to sign.
+   * @param payload - The payload to sign (object).
    * @param secret - The secret key to sign the token with.
    * @param expiresIn - The expiration time of the token (default is '1d').
-   * @returns The signed JWT.
+   * @returns Promise<string> The signed JWT.
    */
-  signJwt(data: any, secret: string, expiresIn: string = '1d'): string {
-    return jwt.sign(data, secret, { expiresIn });
+  async signJwt(
+    payload: Record<string, any>,
+    secret: string,
+    expiresIn: string = '1d',
+  ): Promise<string> {
+    const secretKey = new TextEncoder().encode(secret);
+
+    const jwt = await new SignJWT(payload)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(expiresIn)
+      .sign(secretKey);
+
+    return jwt;
   }
 
   /**
@@ -22,12 +34,16 @@ export class SecurityService {
    *
    * @param token - The JWT to verify.
    * @param secret - The secret key to verify the token with.
-   * @returns The decoded payload if the token is valid, or null if invalid.
+   * @returns Promise<any> The decoded payload if the token is valid, or null if invalid.
    */
-  verifyJwt(token: string, secret: string): any {
+  async verifyJwt(token: string, secret: string): Promise<any> {
     try {
-      return jwt.verify(token, secret);
+      const secretKey = new TextEncoder().encode(secret);
+
+      const { payload } = await jwtVerify(token, secretKey);
+      return payload;
     } catch (error) {
+      console.log('JWT verification error:', error.message);
       return null;
     }
   }

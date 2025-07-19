@@ -1,11 +1,11 @@
 import { HttpException, Injectable } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
 import { AuditProperties } from '../enums/audit_properties.enum';
 import { UserMinVm } from '../shared/viewmodels/user.min.vm';
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class ViewmodelService {
-  constructor(private readonly prismaService: PrismaService) { }
+  constructor(private readonly prismaService: PrismaService) {}
 
   /**
    * Creates a view model instance based on the provided data and view model class.
@@ -24,7 +24,7 @@ export class ViewmodelService {
       AuditProperties.CREATED_BY,
       AuditProperties.UPDATED_BY,
       AuditProperties.DELETED_BY,
-    ]
+    ],
   ): Promise<T> {
     if (!data) {
       throw new HttpException('Donnée introuvable', 404);
@@ -33,7 +33,7 @@ export class ViewmodelService {
     const additionalProperties = await this.processAuditFields(
       data,
       extended_audit,
-      properties
+      properties,
     );
     return new viewModel({ ...data, ...additionalProperties });
   }
@@ -56,7 +56,7 @@ export class ViewmodelService {
       AuditProperties.CREATED_BY,
       AuditProperties.UPDATED_BY,
       AuditProperties.DELETED_BY,
-    ]
+    ],
   ): Promise<T[]> {
     if (!Array.isArray(dataArray)) {
       throw new HttpException('Données introuvables', 404);
@@ -82,7 +82,7 @@ export class ViewmodelService {
     data: any,
     viewModel: new (data: any) => T,
     extended_audit?: boolean,
-    properties: AuditProperties[] = []
+    properties: AuditProperties[] = [],
   ): Promise<{ result: T[]; total: number }> {
     if (!data) {
       throw new HttpException('Données introuvables', 404);
@@ -92,7 +92,7 @@ export class ViewmodelService {
       data.result,
       viewModel,
       extended_audit,
-      properties
+      properties,
     );
 
     return {
@@ -144,7 +144,7 @@ export class ViewmodelService {
   async processAuditFields(
     data: any,
     extended_audit?: boolean,
-    properties: AuditProperties[] = []
+    properties: AuditProperties[] = [],
   ): Promise<any> {
     if (extended_audit !== undefined) {
       if (!extended_audit) {

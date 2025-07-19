@@ -2,9 +2,9 @@ import { HttpException, Logger } from '@nestjs/common';
 import { SupportedTypesFile } from 'src/commons/enums/supported-types-file.enum';
 
 export const FileValidation = (type: string, file, callback) => {
-  Logger.log("Validating file");
-  Logger.log("File type: " + type);
-  Logger.log(file, "File object");
+  Logger.log('Validating file');
+  Logger.log('File type: ' + type);
+  Logger.log(file, 'File object');
 
   const supportedTypes = SupportedTypesFile[type];
 
@@ -19,7 +19,9 @@ export const FileValidation = (type: string, file, callback) => {
 
   // Get mimeType from file.originalname
   const mimeType = file.originalname.split('.').pop().toLowerCase();
-  let SUPPORTED_TYPES = supportedTypes.split('|').map((x) => x.toLowerCase().trim());
+  const SUPPORTED_TYPES = supportedTypes
+    .split('|')
+    .map((x) => x.toLowerCase().trim());
 
   if (!SUPPORTED_TYPES.includes(mimeType)) {
     const error = new HttpException(

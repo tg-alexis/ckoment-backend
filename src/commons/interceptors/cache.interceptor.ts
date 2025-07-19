@@ -1,81 +1,81 @@
 import {
-    CallHandler,
-    ExecutionContext,
-    Injectable,
-    Logger,
-    NestInterceptor,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  NestInterceptor,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Request } from 'express';
-import { RedisService } from '../services/redis.service';
-import { ConfigService } from '@nestjs/config';
 import { RedisServiceProvider } from '../providers/redis-service.provider';
+import { RedisService } from '../services/redis.service';
 
 /**
  * Interceptor that provides caching functionality for requests.
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
+  protected static redisService: RedisService;
 
-    protected static redisService: RedisService;
+  constructor(private readonly configService: ConfigService) {}
 
-    constructor(
-        private readonly configService: ConfigService
-    ) { }
+  /**
+   * Intercepts the incoming request and checks if the response is already cached.
+   * If the response is cached, it returns the cached data.
+   * If the response is not cached, it forwards the request to the next handler and caches the response.
+   * @param context - The execution context.
+   * @param next - The next call handler.
+   * @returns An observable that emits the response data.
+   */
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Promise<Observable<any>> {
+    const request = context.switchToHttp().getRequest<Request>();
+    const key = this.generateKey(request);
 
-    /**
-     * Intercepts the incoming request and checks if the response is already cached.
-     * If the response is cached, it returns the cached data.
-     * If the response is not cached, it forwards the request to the next handler and caches the response.
-     * @param context - The execution context.
-     * @param next - The next call handler.
-     * @returns An observable that emits the response data.
-     */
-    async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
-        const request = context.switchToHttp().getRequest<Request>();
-        const key = this.generateKey(request);
+    const redis = CacheInterceptor.getRedisService();
 
-        const redis = CacheInterceptor.getRedisService();
+    Logger.log(`CacheInterceptor: ${key}`);
 
-        Logger.log(`CacheInterceptor: ${key}`)
-
-        const cachedResponse = await redis.get(key);
-        if (cachedResponse) {
-            Logger.log(`CacheInterceptor: ${key} - Cache hit`)
-            const cachedData = of(JSON.parse(cachedResponse))
-            return cachedData;
-        }
-
-        const ttl = this.configService.get<number>('REDIS_CACHE_TTL');
-
-        return next.handle().pipe(
-            tap(async (response) => {
-                await redis.set(key, JSON.stringify(response), ttl);
-            }),
-        );
+    const cachedResponse = await redis.get(key);
+    if (cachedResponse) {
+      Logger.log(`CacheInterceptor: ${key} - Cache hit`);
+      const cachedData = of(JSON.parse(cachedResponse));
+      return cachedData;
     }
 
-    /**
-     * Retrieves the Redis service instance.
-     * If the instance does not exist, it creates a new instance and returns it.
-     * @returns The Redis service instance.
-     */
-    private static getRedisService(): RedisService {
-        if (!CacheInterceptor.redisService) {
-            CacheInterceptor.redisService = RedisServiceProvider.getService();
-        }
-        return CacheInterceptor.redisService;
-    }
+    const ttl = this.configService.get<number>('REDIS_CACHE_TTL');
 
-    /**
-     * Generates a unique cache key based on the request details.
-     * @param request - The incoming request.
-     * @returns The cache key.
-     */
-    private generateKey(request: Request): string {
-        const { method, originalUrl, body, params, query } = request;
-        const key = `${method}-${originalUrl}-${JSON.stringify(body)}-${JSON.stringify(params)}-${JSON.stringify(query)}`;
-        return key;
+    return next.handle().pipe(
+      tap(async (response) => {
+        await redis.set(key, JSON.stringify(response), ttl);
+      }),
+    );
+  }
+
+  /**
+   * Retrieves the Redis service instance.
+   * If the instance does not exist, it creates a new instance and returns it.
+   * @returns The Redis service instance.
+   */
+  private static getRedisService(): RedisService {
+    if (!CacheInterceptor.redisService) {
+      CacheInterceptor.redisService = RedisServiceProvider.getService();
     }
+    return CacheInterceptor.redisService;
+  }
+
+  /**
+   * Generates a unique cache key based on the request details.
+   * @param request - The incoming request.
+   * @returns The cache key.
+   */
+  private generateKey(request: Request): string {
+    const { method, originalUrl, body, params, query } = request;
+    const key = `${method}-${originalUrl}-${JSON.stringify(body)}-${JSON.stringify(params)}-${JSON.stringify(query)}`;
+    return key;
+  }
 }

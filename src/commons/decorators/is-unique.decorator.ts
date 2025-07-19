@@ -4,8 +4,8 @@ import {
   ValidationOptions,
 } from 'class-validator';
 import { DatabaseConstraint } from '../constraints/database.constraint';
-import { ModelMappingTable } from '../enums/model-mapping.enum';
 import { IsUniqueMode } from '../enums/is_unique_mode.enum';
+import { ModelMappingTable } from '../enums/model-mapping.enum';
 
 export class IsUniqueConstraint extends DatabaseConstraint {
   checkRecord(record: any): boolean {
@@ -24,7 +24,7 @@ export function IsUnique(
   validationOptions?: ValidationOptions,
   mode: IsUniqueMode = IsUniqueMode.INSENSITIVE,
 ) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

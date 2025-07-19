@@ -1,13 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { S3 } from 'aws-sdk';
 import { ModelMappingPrefix } from '../enums/model-mapping.enum';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class S3FileService {
-  constructor(
-    private configService: ConfigService,
-  ) { }
+  constructor(private configService: ConfigService) {}
 
   private readonly s3Instance = new S3({
     accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
@@ -55,7 +53,10 @@ export class S3FileService {
    * @param prefix - The prefix to be used in the file name.
    * @returns A promise that resolves to the S3 upload response, or null if an error occurs.
    */
-  async upload(file: Express.Multer.File, prefix: ModelMappingPrefix): Promise<S3.ManagedUpload.SendData | null> {
+  async upload(
+    file: Express.Multer.File,
+    prefix: ModelMappingPrefix,
+  ): Promise<S3.ManagedUpload.SendData | null> {
     Logger.log('Uploading the following file: ', file);
 
     const fileExtension = file.mimetype.split('/')[1];

@@ -1,5 +1,5 @@
 export interface GenericFindOneOptions {
-    id: string;
-    include?: any;
-    select?: any;
+  id: string;
+  include?: any;
+  select?: any;
 }

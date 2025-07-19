@@ -1,5 +1,3 @@
-import { IsDate, IsString } from 'class-validator';
-
 export class AuditEntity {
   created_at: Date;
   updated_at: Date;

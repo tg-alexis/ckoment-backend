@@ -1,19 +1,17 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { CreateAdminDto } from './dto/create-admin.dto';
-import { UpdateAdminDto } from './dto/update-admin.dto';
+import { Inject, Injectable } from '@nestjs/common';
+import * as argon from 'argon2';
+import { Profile } from 'src/commons/enums/profile.enum';
+import { IPaginationParams } from 'src/commons/interfaces/pagination-params';
 import { BaseCRUDService } from 'src/commons/services/base_crud.service';
 import { UserEntity } from '../user/entities/user.entity';
+import { CreateAdminDto } from './dto/create-admin.dto';
+import { UpdateAdminDto } from './dto/update-admin.dto';
 import { CreateAdminMapper } from './mappers/create-admin.mapper';
-import { IPaginationParams } from 'src/commons/interfaces/pagination-params';
-import { Profile } from 'src/commons/enums/profile.enum';
-import * as bcrypt from "bcrypt"
 import { UpdateAdminMapper } from './mappers/update-admin.mapper';
 
 @Injectable()
 export class AdminService extends BaseCRUDService<UserEntity> {
-  constructor(
-    @Inject('MODEL_MAPPING') modelName: string,
-  ) {
+  constructor(@Inject('MODEL_MAPPING') modelName: string) {
     super(modelName);
   }
 
@@ -23,12 +21,12 @@ export class AdminService extends BaseCRUDService<UserEntity> {
       is_active: true,
       is_first_login: true,
       mail_verified_at: new Date(),
-      password: await bcrypt.hash(createAdminDto.password, 10),
+      password: await argon.hash(createAdminDto.password),
     });
 
     const createdUser = await this.genericCreate({
       data: oAdmin,
-      connectedUserId
+      connectedUserId,
     });
 
     // Send email with password to the user
@@ -38,12 +36,12 @@ export class AdminService extends BaseCRUDService<UserEntity> {
 
   findAll(params?: IPaginationParams | undefined) {
     return this.genericFindAll({
-      params, 
+      params,
       whereClause: {
         profile: {
-          in: [Profile.ADMIN, Profile.SUPER_ADMIN]
-        }
-      }
+          in: [Profile.ADMIN, Profile.SUPER_ADMIN],
+        },
+      },
     });
   }
 
@@ -51,23 +49,36 @@ export class AdminService extends BaseCRUDService<UserEntity> {
     return this.genericFindOne({ id });
   }
 
-  findOneBy(whereClause: any, include?: any, select?: any): Promise<UserEntity> {
-    return this.genericFindOneBy({whereClause, include, select});
+  findOneBy(
+    whereClause: any,
+    include?: any,
+    select?: any,
+  ): Promise<UserEntity> {
+    return this.genericFindOneBy({ whereClause, include, select });
   }
 
-  async update(id: string, updateAdminDto: UpdateAdminDto, connectedUserId?: string) {
+  async update(
+    id: string,
+    updateAdminDto: UpdateAdminDto,
+    connectedUserId?: string,
+  ) {
     const oAdmin = new UpdateAdminMapper({
       ...updateAdminDto,
-      password: updateAdminDto.password ? await bcrypt.hash(updateAdminDto.password, 10) : undefined,
-      is_first_login: updateAdminDto.password ? true : undefined
+      password: updateAdminDto.password
+        ? await argon.hash(updateAdminDto.password)
+        : undefined,
+      is_first_login: updateAdminDto.password ? true : undefined,
     });
 
-    const updatedAdmin = await this.genericUpdate({id, data: oAdmin, connectedUserId});
+    const updatedAdmin = await this.genericUpdate({
+      id,
+      data: oAdmin,
+      connectedUserId,
+    });
 
     // Send email with password to the user if password has been updated
     if (updateAdminDto.password) {
       // Send email
-
     }
 
     // Send email if is_active has been updated
@@ -83,18 +94,24 @@ export class AdminService extends BaseCRUDService<UserEntity> {
   }
 
   softDelete(id: string, connectedUserId?: string) {
-    return this.genericSoftDelete({id, connectedUserId});
+    return this.genericSoftDelete({ id, connectedUserId });
   }
 
   restore(id: string, connectedUserId?: string) {
-    return this.genericRestore({id, connectedUserId});
+    return this.genericRestore({ id, connectedUserId });
   }
 
   async count(whereClause?: any): Promise<number> {
     return this.genericCount(whereClause);
   }
 
-  async groupBy(by: any, whereClause?: any, orderBy?: any, skip?: number, take?: number): Promise<any> {
-    return this.genericGroupBy({by, whereClause, orderBy, skip, take});
+  async groupBy(
+    by: any,
+    whereClause?: any,
+    orderBy?: any,
+    skip?: number,
+    take?: number,
+  ): Promise<any> {
+    return this.genericGroupBy({ by, whereClause, orderBy, skip, take });
   }
 }

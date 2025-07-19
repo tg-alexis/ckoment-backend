@@ -1,21 +1,31 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LoginDTO } from './dtos/login.dto';
-import { RegistrationDTO } from './dtos/registration.dto';
-import { ActivateAccountDTO } from './dtos/activate-account.dto';
-import { ResetActivationOtpDTO } from './dtos/resend-activation-otp.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthenticationGuard } from 'src/commons/guards/authentication.guard';
 import { CustomRequest } from 'src/commons/interfaces/custom_request';
-import { RequestResetPasswordDTO } from './dtos/request-reset-password.dto';
+import { AuthService } from './auth.service';
+import { ActivateAccountDTO } from './dtos/activate-account.dto';
 import { ConfirmResetPasswordDTO } from './dtos/confirm-reset-password.dto';
-import { ResetPasswordDTO } from './dtos/reset-password.dto';
+import { LoginDTO } from './dtos/login.dto';
+import { RegistrationDTO } from './dtos/registration.dto';
+import { RequestResetPasswordDTO } from './dtos/request-reset-password.dto';
+import { ResetActivationOtpDTO } from './dtos/resend-activation-otp.dto';
 import { ResendResetPasswordOtpDTO } from './dtos/resend-reset-password-otp.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ResetPasswordDTO } from './dtos/reset-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   async login(@Body() data: LoginDTO) {
@@ -38,9 +48,7 @@ export class AuthController {
   }
 
   @Get('refresh-token')
-  async refreshToken(
-    @Query('refresh_token') refreshToken: string,
-  ) {
+  async refreshToken(@Query('refresh_token') refreshToken: string) {
     return await this.authService.refreshTokens(refreshToken);
   }
 
@@ -48,7 +56,10 @@ export class AuthController {
   @UseGuards(AuthenticationGuard)
   async logout(@Req() req: CustomRequest) {
     await this.authService.revokeToken(req.user.id);
-    throw new HttpException("Utilisateur déconnecté avec succès !", HttpStatus.NO_CONTENT);
+    throw new HttpException(
+      'Utilisateur déconnecté avec succès !',
+      HttpStatus.NO_CONTENT,
+    );
   }
 
   @Post('password-reset')
@@ -71,7 +82,7 @@ export class AuthController {
     await this.authService.resetPassword(data);
 
     return {
-      message: 'Mot de passe réinitialisé avec succès !'
-    }
+      message: 'Mot de passe réinitialisé avec succès !',
+    };
   }
 }

@@ -5,12 +5,12 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { RequestContextService } from './request-context.service';
-import { RequestContextServiceProvider } from '../providers/request-context-service.provider';
 import { CustomRequest } from '../interfaces/custom_request';
 import { CreateOptions } from '../interfaces/services/prisma/create-options';
-import { UpdateOptions } from '../interfaces/services/prisma/update-options';
 import { DeleteOptions } from '../interfaces/services/prisma/delete-options';
+import { UpdateOptions } from '../interfaces/services/prisma/update-options';
+import { RequestContextServiceProvider } from '../providers/request-context-service.provider';
+import { RequestContextService } from './request-context.service';
 
 @Injectable()
 export class PrismaService
@@ -44,36 +44,47 @@ export class PrismaService
     await this.$disconnect();
   }
 
-  private static getRequestContextService(): RequestContextService {
-    if (!PrismaService.requestContextService) {
-      PrismaService.requestContextService =
-        RequestContextServiceProvider.getService();
+  private static getRequestContextService(): RequestContextService | null {
+    try {
+      if (!PrismaService.requestContextService) {
+        const service = RequestContextServiceProvider.getService();
+        if (!service) {
+          return null;
+        }
+        PrismaService.requestContextService = service;
+      }
+      return PrismaService.requestContextService;
+    } catch (_error) {
+      return null;
     }
-    return PrismaService.requestContextService;
   }
 
   getClient(): PrismaClient {
     const requestContextService = PrismaService.getRequestContextService();
-  
+
+    // Si le service n'est pas disponible (pendant le bootstrap), retourner this directement
     if (!requestContextService) {
-      Logger.warn('RequestContextService is not initialized.');
       return this.transactionClient || this;
     }
-  
+
     const request: CustomRequest = requestContextService.getContext();
-  
+
+    // Si le contexte n'est pas disponible (pendant le bootstrap), retourner this directement
     if (!request) {
-      Logger.warn('RequestContext is not available.');
       return this.transactionClient || this;
     }
-  
-    if (request.transaction && request.prismaTransaction && request.prismaTransaction.$connect) {
+
+    if (
+      request.transaction &&
+      request.prismaTransaction &&
+      request.prismaTransaction.$connect
+    ) {
       Logger.log('Using transaction client');
       return request.prismaTransaction;
     }
-  
+
     return this.transactionClient || this;
-  } 
+  }
 
   async create(options: CreateOptions) {
     const { model, data, include, select } = options;
@@ -116,7 +127,7 @@ export class PrismaService
 
   async delete(options: DeleteOptions) {
     const { model, where } = options;
-    
+
     try {
       const deletedData = await this.getClient()[model].delete({ where });
       Logger.log(`Deleted record in ${model}`, JSON.stringify(deletedData));

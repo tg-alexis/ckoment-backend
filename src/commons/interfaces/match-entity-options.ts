@@ -1,4 +1,4 @@
 export interface MatchEntityOptions {
-    select?: any;
-    include?: any;
+  select?: any;
+  include?: any;
 }

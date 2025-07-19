@@ -1,18 +1,18 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import {
   ModelMappingPrefix,
-  ModelMappingTable
+  ModelMappingTable,
 } from '../enums/model-mapping.enum';
 import { generateRandomString } from '../utils/random';
 import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class ReferenceService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   /**
    * Generates a unique reference string with the given prefix.
-   * 
+   *
    * @param prefix - The prefix to be used for the reference.
    * @param length - The length of the random string to be appended to the prefix.
    * @param referenceField - The field name in the database table where the reference is stored.
@@ -22,9 +22,8 @@ export class ReferenceService {
   async generate(
     prefix: ModelMappingPrefix,
     length: number = 10,
-    referenceField: string = 'reference'
+    referenceField: string = 'reference',
   ): Promise<string> {
-
     if (!prefix) {
       throw new HttpException('Préfixe non trouvé', 500);
     }
@@ -32,13 +31,16 @@ export class ReferenceService {
     const reference = `${prefix}-${generateRandomString(length)}`;
 
     const property = Object.keys(ModelMappingPrefix).find(
-      (key) => ModelMappingPrefix[key] === prefix
+      (key) => ModelMappingPrefix[key] === prefix,
     );
 
     const table = ModelMappingTable[property];
 
     if (!table) {
-      throw new HttpException('Table non trouvée pour le préfixe: ' + prefix, 500);
+      throw new HttpException(
+        'Table non trouvée pour le préfixe: ' + prefix,
+        500,
+      );
     }
 
     // Type assertion to inform TypeScript of the correct model type
@@ -46,8 +48,8 @@ export class ReferenceService {
 
     const existingReference = await model.findFirst({
       where: {
-        [referenceField]: reference
-      }
+        [referenceField]: reference,
+      },
     });
 
     if (existingReference) {

@@ -1,10 +1,10 @@
-import { HttpAdapterHost, NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { join } from 'path';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
+import { join } from 'path';
+import { AppModule } from './app.module';
 import { LifecycleService } from './commons/lifecycles/LifecycleService';
 //import { PrismaClientExceptionFilter } from './commons/filters/prisma-client-exception/prisma-client-exception.filter';
 import { useContainer } from 'class-validator';
@@ -24,9 +24,6 @@ async function bootstrap() {
   const BACK_OFFICE_DESCRIPTION = process.env.BACK_OFFICE_DESCRIPTION;
   const APP_VERSION = process.env.APP_VERSION;
 
-  // Récupère l'adaptateur HTTP de l'application
-  const { httpAdapter } = app.get(HttpAdapterHost);
-
   // Configure le middleware pour parser les corps de requête JSON
   app.use(bodyParser.json());
 
@@ -35,7 +32,7 @@ async function bootstrap() {
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: [
-      'Origin, X-Requested-With, Content-Type, Accept, Authorization, captcha-key, Wave-Signature'
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization, captcha-key, Wave-Signature',
     ],
     credentials: true,
   });
@@ -47,14 +44,16 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // Configure le pipe global de validation
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   // Configure les fichiers statiques à servir depuis le dossier 'assets'
   app.useStaticAssets(join(__dirname, '..', 'assets'), {

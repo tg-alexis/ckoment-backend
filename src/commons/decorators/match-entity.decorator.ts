@@ -1,15 +1,15 @@
+import { Injectable } from '@nestjs/common';
 import {
   registerDecorator,
+  ValidationArguments,
   ValidationOptions,
   ValidatorConstraint,
-  ValidationArguments,
 } from 'class-validator';
-import { ModelMappingTable } from '../enums/model-mapping.enum';
 import { DatabaseConstraint } from '../constraints/database.constraint';
-import { Injectable } from '@nestjs/common';
-import { RequestContextService } from '../services/request-context.service';
 import { IsUniqueMode } from '../enums/is_unique_mode.enum';
+import { ModelMappingTable } from '../enums/model-mapping.enum';
 import { MatchEntityOptions } from '../interfaces/match-entity-options';
+import { RequestContextService } from '../services/request-context.service';
 
 @Injectable()
 @ValidatorConstraint({ async: true })
@@ -19,6 +19,7 @@ export class AppEntityConstraint extends DatabaseConstraint {
   }
 
   async validate(value: any, args: ValidationArguments): Promise<boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [entity, property, options] = args.constraints;
 
     const isValid = await super.validate(value, args);
@@ -47,7 +48,7 @@ export function MatchEntity(
   validationOptions?: ValidationOptions,
   mode: IsUniqueMode = IsUniqueMode.INSENSITIVE,
 ) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

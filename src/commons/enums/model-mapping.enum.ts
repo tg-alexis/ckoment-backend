@@ -3,6 +3,11 @@ export enum ModelMappingTable {
   PRODUCT = 'products',
   CATEGORY = 'categories',
   PASSWORD_RESET = 'password_resets',
+  PROFILE = 'profiles',
+  ARTICLE = 'articles',
+  STATUS = 'status',
+  MAGAZINE = 'magazines',
+  MEDIA = 'medias',
 }
 
 export enum ModelMappingPrefix {
@@ -10,4 +15,9 @@ export enum ModelMappingPrefix {
   PRODUCT = 'PRD',
   CATEGORY = 'CAT',
   PASSWORD_RESET = 'PSW',
+  PROFILE = 'PRF',
+  ARTICLE = 'ART',
+  STATUS = 'STS',
+  MAGAZINE = 'MAG',
+  MEDIA = 'MDA',
 }

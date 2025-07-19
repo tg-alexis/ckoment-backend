@@ -1,8 +1,8 @@
-import { FilePath } from "../enums/file_path.enum";
+import { FilePath } from '../enums/file_path.enum';
 
 export interface FileUploadOptions {
-    fieldName: string;
-    fileType: string;
-    fileSizeLimitMB: number;
-    filePathEnum: FilePath;
+  fieldName: string;
+  fileType: string;
+  fileSizeLimitMB: number;
+  filePathEnum: FilePath;
 }

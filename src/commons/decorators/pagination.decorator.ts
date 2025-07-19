@@ -1,5 +1,5 @@
-import { applyDecorators } from '@nestjs/common'
-import { ApiQuery } from '@nestjs/swagger'
+import { applyDecorators } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
 
 export const Pagination = () =>
   applyDecorators(
@@ -44,5 +44,5 @@ export const Pagination = () =>
       required: false,
       type: Boolean,
       description: 'Return results including only deleted items',
-    })
-  )
+    }),
+  );

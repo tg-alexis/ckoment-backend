@@ -1,10 +1,10 @@
 import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
   CallHandler,
+  ExecutionContext,
   HttpException,
+  Injectable,
   Logger,
+  NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
@@ -34,7 +34,9 @@ export class ResponseInterceptor implements NestInterceptor {
         let message = error.message;
 
         if (error.response?.message) {
-          message = Array.isArray(error.response?.message) ? error.response?.message.join(', ') : error.response?.message;
+          message = Array.isArray(error.response?.message)
+            ? error.response?.message.join(', ')
+            : error.response?.message;
         }
 
         // Handle specific error message for file too large Multer error

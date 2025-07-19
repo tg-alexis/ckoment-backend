@@ -1,4 +1,4 @@
 export interface DeleteOptions {
-    model: string;
-    where: any;
+  model: string;
+  where: any;
 }

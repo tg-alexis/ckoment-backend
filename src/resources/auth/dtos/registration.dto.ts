@@ -1,70 +1,75 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsStrongPassword } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsStrongPassword,
+  IsUUID,
+} from 'class-validator';
+import { IsDataExists } from 'src/commons/decorators/is-data-exists.decorator';
 import { IsUnique } from 'src/commons/decorators/is-unique.decorator';
-import { IsUniqueMode } from 'src/commons/enums/is_unique_mode.enum';
 import { ModelMappingTable } from 'src/commons/enums/model-mapping.enum';
-import { Profile } from 'src/commons/enums/profile.enum';
 
 export class RegistrationDTO {
-    @IsUnique(
-        ModelMappingTable.USER,
-        'email',
-        {
-            message: 'Un compte existe déjà avec cette adresse email !'
-        }
-    )
-    @IsString()
-    @ApiProperty({
-        description: 'Email address',
-        example: 'johndoe@gmail.com'
-    })
-    email: string;
+  @IsUnique(ModelMappingTable.USER, 'email', {
+    message: 'Un compte existe déjà avec cette adresse email !',
+  })
+  @IsString()
+  @ApiProperty({
+    description: 'Adresse email',
+    example: 'johndoe@gmail.com',
+  })
+  email: string;
 
-    @IsString()
-    @ApiProperty({
-        description: 'First name',
-        example: 'John'
-    })
-    firstname: string;
+  @IsString()
+  @ApiProperty({
+    description: 'Prénoms',
+    example: 'John',
+  })
+  prenoms: string;
 
-    @IsString()
-    @ApiProperty({
-        description: 'Last name',
-        example: 'Doe'
-    })
-    lastname: string;
+  @IsString()
+  @ApiProperty({
+    description: 'Noms de famille',
+    example: 'Doe',
+  })
+  noms: string;
 
-    @IsString()
-    @IsOptional()
-    @ApiProperty({
-        description: 'Contact number',
-        example: '+33612345678'
-    })
-    contact?: string;
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: 'Numéro de contact',
+    example: '+33612345678',
+    required: false,
+  })
+  contact?: string;
 
-    @IsEnum(Profile)
-    @ApiProperty({
-        description: 'Profile',
-        example: Profile.CLIENT
-    })
-    profile: string;
+  @IsUUID(4, { message: "L'ID du profil doit être un UUID valide" })
+  @IsDataExists(ModelMappingTable.PROFILE, 'id', {
+    message: "Ce profil n'existe pas",
+  })
+  @ApiProperty({
+    description: 'ID du profil utilisateur',
+    example: 'ckm123456789',
+  })
+  profile_id: string;
 
-    @IsString()
-    @IsStrongPassword(
-        {
-            minLength: 8,
-            minLowercase: 1,
-            minUppercase: 1,
-            minNumbers: 1,
-            minSymbols: 1
-        },
-        {
-            message: 'Le mot de passe doit être entre 8 caractères, doit contenir au moins une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial.'
-        }
-    )
-    @ApiProperty({
-        description: 'Password',
-        example: 'Password@123'
-    })
-    password: string;
+  @IsString()
+  @IsStrongPassword(
+    {
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1,
+    },
+    {
+      message:
+        'Le mot de passe doit contenir au moins 8 caractères, une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial.',
+    },
+  )
+  @ApiProperty({
+    description: 'Mot de passe',
+    example: 'Password@123',
+  })
+  password: string;
 }

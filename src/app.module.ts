@@ -1,34 +1,41 @@
-import { Global, MiddlewareConsumer, Module, OnModuleInit, RequestMethod } from '@nestjs/common';
+import {
+  Global,
+  MiddlewareConsumer,
+  Module,
+  OnModuleInit,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ResponseInterceptor } from './commons/interceptors/response.interceptor';
-import { IdentificationGuard } from './commons/guards/identification.guard';
-import { PrismaService } from './commons/services/prisma.service';
-import { PaginationMiddleware } from './commons/middlewares/pagination.middleware';
-import { AuthModule } from './resources/auth/auth.module';
-import { ViewmodelService } from './commons/services/viewmodel.service';
-import { ProductModule } from './resources/product/product.module';
-import { CategoryModule } from './resources/category/category.module';
-import { PrismaServiceProvider } from './commons/providers/prisma-service.provider';
-import { PaginationService } from './commons/services/pagination.service';
-import { PaginationServiceProvider } from './commons/providers/pagination-service.provider';
-import { RedisService } from './commons/services/redis.service';
-import { RedisServiceProvider } from './commons/providers/redis-service.provider';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { RequestContextService } from './commons/services/request-context.service';
-import { RequestContextInterceptor } from './commons/interceptors/request-context.interceptor';
-import { IsUniqueConstraint } from './commons/decorators/is-unique.decorator';
-import { RequestContextServiceProvider } from './commons/providers/request-context-service.provider';
 import { IsDataExistsConstraint } from './commons/decorators/is-data-exists.decorator';
+import { IsUniqueConstraint } from './commons/decorators/is-unique.decorator';
+import { AppEntityConstraint } from './commons/decorators/match-entity.decorator';
+import { IdentificationGuard } from './commons/guards/identification.guard';
+import { RequestContextInterceptor } from './commons/interceptors/request-context.interceptor';
+import { ResponseInterceptor } from './commons/interceptors/response.interceptor';
+import { PaginationMiddleware } from './commons/middlewares/pagination.middleware';
+import { PaginationServiceProvider } from './commons/providers/pagination-service.provider';
+import { PrismaServiceProvider } from './commons/providers/prisma-service.provider';
+import { RedisServiceProvider } from './commons/providers/redis-service.provider';
+import { RequestContextServiceProvider } from './commons/providers/request-context-service.provider';
 import { ViewmodelServiceProvider } from './commons/providers/viewmodel-service.provider';
+import { AppContextService } from './commons/services/app-context.service';
+import { BootstrapService } from './commons/services/bootstrap.service';
+import { PaginationService } from './commons/services/pagination.service';
+import { PrismaService } from './commons/services/prisma.service';
+import { RedisService } from './commons/services/redis.service';
+import { RequestContextService } from './commons/services/request-context.service';
 import { SecurityService } from './commons/services/security.service';
 import { StorageService } from './commons/services/storage.service';
-import { ScheduleModule } from '@nestjs/schedule';
-import { DeleteNonUsedFilesCron } from './commons/crons/delete-non-used-files.cron';
+import { ViewmodelService } from './commons/services/viewmodel.service';
 import { AdminModule } from './resources/admin/admin.module';
+import { ArticlesModule } from './resources/articles/articles.module';
+import { AuthModule } from './resources/auth/auth.module';
+import { CategoryModule } from './resources/category/category.module';
+import { StatusModule } from './resources/status/status.module';
 import { UserModule } from './resources/user/user.module';
-import { BootstrapService } from './commons/services/bootstrap.service';
-import { AppEntityConstraint } from './commons/decorators/match-entity.decorator';
 
 /**
  * Module principal de l'application.
@@ -50,10 +57,11 @@ import { AppEntityConstraint } from './commons/decorators/match-entity.decorator
     ScheduleModule.forRoot(),
     // Modules de ressources
     AuthModule,
-    ProductModule,
     CategoryModule,
     UserModule,
     AdminModule,
+    ArticlesModule,
+    StatusModule,
   ],
   providers: [
     // Interceptors globaux
@@ -88,12 +96,11 @@ import { AppEntityConstraint } from './commons/decorators/match-entity.decorator
     RequestContextServiceProvider,
     SecurityService,
     StorageService,
+    AppContextService,
     // Decorators personnalisés
     IsUniqueConstraint,
     IsDataExistsConstraint,
     AppEntityConstraint,
-    // CRONs
-    DeleteNonUsedFilesCron,
   ],
   exports: [
     // Exporte les services globaux pour être utilisés dans d'autres modules
@@ -109,10 +116,10 @@ import { AppEntityConstraint } from './commons/decorators/match-entity.decorator
     RequestContextServiceProvider,
     SecurityService,
     StorageService,
+    AppContextService,
     IsUniqueConstraint,
     IsDataExistsConstraint,
     AppEntityConstraint,
-    DeleteNonUsedFilesCron,
   ],
 })
 export class AppModule implements OnModuleInit {
@@ -123,6 +130,7 @@ export class AppModule implements OnModuleInit {
    * @param {PaginationService} paginationService - Service de pagination des données.
    * @param {RedisService} redisService - Service de gestion de la base de données Redis.
    * @param {RequestContextService} requestContextService - Service de contexte de requête.
+   * @param {AppContextService} appContextService - Service de contexte application.
    */
   constructor(
     private readonly viewmodelService: ViewmodelService,
@@ -130,14 +138,17 @@ export class AppModule implements OnModuleInit {
     private readonly paginationService: PaginationService,
     private readonly redisService: RedisService,
     private readonly requestContextService: RequestContextService,
-  ) { }
+    private readonly appContextService: AppContextService,
+  ) {}
 
   /**
    * Configure le middleware de pagination pour toutes les routes HTTP GET de l'application.
    * @param {MiddlewareConsumer} consumer - Consommateur de middleware pour configurer les middleware.
    */
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(PaginationMiddleware).forRoutes({ path: '*', method: RequestMethod.GET });
+    consumer
+      .apply(PaginationMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.GET });
   }
 
   /**
@@ -150,5 +161,10 @@ export class AppModule implements OnModuleInit {
     RedisServiceProvider.setService(this.redisService);
     RequestContextServiceProvider.setService(this.requestContextService);
     PrismaServiceProvider.setService(this.prismaService);
+
+    // Marquer la fin du bootstrap après un délai pour laisser tout s'initialiser
+    setTimeout(() => {
+      this.appContextService.setBootstrapComplete();
+    }, 1000);
   }
 }

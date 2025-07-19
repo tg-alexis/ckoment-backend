@@ -1,7 +1,6 @@
 import { IsString } from 'class-validator';
 
 export class EnumVm<T, U> {
-
   @IsString()
   default: string;
 

@@ -1,4 +1,4 @@
 export enum IsUniqueMode {
-    DEFAULT = 'default',
-    INSENSITIVE = 'insensitive',
+  DEFAULT = 'default',
+  INSENSITIVE = 'insensitive',
 }

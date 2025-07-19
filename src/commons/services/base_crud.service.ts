@@ -1,20 +1,20 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
-import { IPaginationParams } from '../interfaces/pagination-params';
-import { PaginationService } from './pagination.service';
-import { PaginationVm } from '../shared/viewmodels/pagination.vm';
-import { PrismaServiceProvider } from '../providers/prisma-service.provider';
-import { PaginationServiceProvider } from '../providers/pagination-service.provider';
-import { RequestContextService } from './request-context.service';
-import { RequestContextServiceProvider } from '../providers/request-context-service.provider';
 import { CustomRequest } from '../interfaces/custom_request';
+import { IPaginationParams } from '../interfaces/pagination-params';
 import { GenericCreateOptions } from '../interfaces/services/base-crud/generic-create-options';
-import { GenericFindAllOptions } from '../interfaces/services/base-crud/generic-find-all-options';
-import { GenericFindOneOptions } from '../interfaces/services/base-crud/generic-find-one-options';
-import { GenericFindOneByOptions } from '../interfaces/services/base-crud/generic-find-one-by-options';
-import { GenericUpdateOptions } from '../interfaces/services/base-crud/generic-update-options';
 import { GenericDefaultOptions } from '../interfaces/services/base-crud/generic-default-options';
+import { GenericFindAllOptions } from '../interfaces/services/base-crud/generic-find-all-options';
+import { GenericFindOneByOptions } from '../interfaces/services/base-crud/generic-find-one-by-options';
+import { GenericFindOneOptions } from '../interfaces/services/base-crud/generic-find-one-options';
 import { GenericGroupByOptions } from '../interfaces/services/base-crud/generic-group-by-options';
+import { GenericUpdateOptions } from '../interfaces/services/base-crud/generic-update-options';
+import { PaginationServiceProvider } from '../providers/pagination-service.provider';
+import { PrismaServiceProvider } from '../providers/prisma-service.provider';
+import { RequestContextServiceProvider } from '../providers/request-context-service.provider';
+import { PaginationVm } from '../shared/viewmodels/pagination.vm';
+import { PaginationService } from './pagination.service';
+import { PrismaService } from './prisma.service';
+import { RequestContextService } from './request-context.service';
 
 /**
  * Base CRUD Service class for performing CRUD operations on a model.
@@ -50,16 +50,25 @@ export abstract class BaseCRUDService<T> {
     return BaseCRUDService.prisma;
   }
 
-  private static getRequestContextService(): RequestContextService {
-    if (!BaseCRUDService.requestContextService) {
-      BaseCRUDService.requestContextService = RequestContextServiceProvider.getService();
+  private static getRequestContextService(): RequestContextService | null {
+    try {
+      if (!BaseCRUDService.requestContextService) {
+        const service = RequestContextServiceProvider.getService();
+        if (!service) {
+          return null;
+        }
+        BaseCRUDService.requestContextService = service;
+      }
+      return BaseCRUDService.requestContextService;
+    } catch (_error) {
+      return null;
     }
-    return BaseCRUDService.requestContextService;
   }
 
   private static getPaginationService(): PaginationService {
     if (!BaseCRUDService.paginationService) {
-      BaseCRUDService.paginationService = PaginationServiceProvider.getService();
+      BaseCRUDService.paginationService =
+        PaginationServiceProvider.getService();
     }
     return BaseCRUDService.paginationService;
   }
@@ -70,13 +79,18 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericCreate(options: GenericCreateOptions): Promise<T> {
-    const { data, include, select, connectedUserId } = options
+    const { data, include, select, connectedUserId } = options;
     this.initServices();
 
     const requestContext = BaseCRUDService.getRequestContextService();
-    const request: CustomRequest = requestContext.getContext();
+    let isTransaction = false;
 
-    if (!request.transaction) {
+    if (requestContext) {
+      const request: CustomRequest = requestContext.getContext();
+      isTransaction = request?.transaction || false;
+    }
+
+    if (!isTransaction) {
       try {
         return await this.model.create({
           data: {
@@ -100,7 +114,7 @@ export abstract class BaseCRUDService<T> {
           created_by: connectedUserId,
         },
         include,
-        select
+        select,
       });
 
       return createdData;
@@ -149,8 +163,16 @@ export abstract class BaseCRUDService<T> {
   }*/
 
   async genericFindAll(options: GenericFindAllOptions): Promise<PaginationVm> {
-    let { whereClause, include, select, searchables, orderBy, params } = options
-    whereClause = whereClause || {}
+    const {
+      whereClause: initialWhereClause,
+      include,
+      select,
+      searchables,
+      orderBy,
+      params,
+    } = options;
+    let whereClause = initialWhereClause;
+    whereClause = whereClause || {};
     this.initServices();
 
     try {
@@ -162,7 +184,7 @@ export abstract class BaseCRUDService<T> {
         orderBy,
         select,
         params,
-        searchables
+        searchables,
       });
     } catch (error) {
       this.handleError(error, 'Error fetching records');
@@ -170,7 +192,7 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericFindOne(options: GenericFindOneOptions): Promise<T> {
-    let { id, include, select } = options
+    const { id, include, select } = options;
     this.initServices();
 
     try {
@@ -185,7 +207,7 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericFindOneBy(options: GenericFindOneByOptions): Promise<T> {
-    let { whereClause, include, select } = options
+    const { whereClause, include, select } = options;
 
     this.initServices();
 
@@ -201,14 +223,19 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericUpdate(options: GenericUpdateOptions): Promise<T> {
-    let { id, data, include, select, connectedUserId } = options
+    const { id, data, include, select, connectedUserId } = options;
 
     this.initServices();
 
     const requestContext = BaseCRUDService.getRequestContextService();
-    const request: CustomRequest = requestContext.getContext();
+    let isTransaction = false;
 
-    if (!request.transaction) {
+    if (requestContext) {
+      const request: CustomRequest = requestContext.getContext();
+      isTransaction = request?.transaction || false;
+    }
+
+    if (!isTransaction) {
       try {
         return await this.model.update({
           where: { id },
@@ -217,7 +244,7 @@ export abstract class BaseCRUDService<T> {
             updated_by: connectedUserId,
           },
           include,
-          select: !include ? select : undefined
+          select: !include ? select : undefined,
         });
       } catch (error) {
         this.handleError(error, 'Error updating record');
@@ -226,7 +253,13 @@ export abstract class BaseCRUDService<T> {
 
     try {
       const prisma = BaseCRUDService.getPrismaService();
-      const updatedData = await prisma.update({ model: this.modelName, where: { id }, data: { ...data, updated_by: connectedUserId }, include, select });
+      const updatedData = await prisma.update({
+        model: this.modelName,
+        where: { id },
+        data: { ...data, updated_by: connectedUserId },
+        include,
+        select,
+      });
 
       return updatedData;
     } catch (error) {
@@ -234,15 +267,18 @@ export abstract class BaseCRUDService<T> {
     }
   }
 
-  async genericDelete(
-    id: string
-  ): Promise<T> {
+  async genericDelete(id: string): Promise<T> {
     this.initServices();
 
     const requestContext = BaseCRUDService.getRequestContextService();
-    const request: CustomRequest = requestContext.getContext();
+    let isTransaction = false;
 
-    if (!request.transaction) {
+    if (requestContext) {
+      const request: CustomRequest = requestContext.getContext();
+      isTransaction = request?.transaction || false;
+    }
+
+    if (!isTransaction) {
       try {
         return await this.model.delete({ where: { id } });
       } catch (error) {
@@ -252,7 +288,10 @@ export abstract class BaseCRUDService<T> {
 
     try {
       const prisma = BaseCRUDService.getPrismaService();
-      const deletedData = await prisma.delete({ model: this.modelName, where: { id } });
+      const deletedData = await prisma.delete({
+        model: this.modelName,
+        where: { id },
+      });
 
       return deletedData;
     } catch (error) {
@@ -261,19 +300,24 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericSoftDelete(options: GenericDefaultOptions): Promise<T> {
-    let { id, connectedUserId, include, select } = options
+    const { id, connectedUserId, include, select } = options;
     this.initServices();
 
     const requestContext = BaseCRUDService.getRequestContextService();
-    const request: CustomRequest = requestContext.getContext();
+    let isTransaction = false;
 
-    if (!request.transaction) {
+    if (requestContext) {
+      const request: CustomRequest = requestContext.getContext();
+      isTransaction = request?.transaction || false;
+    }
+
+    if (!isTransaction) {
       try {
         return await this.model.update({
           where: { id },
           data: { deleted_at: new Date(), deleted_by: connectedUserId },
           include,
-          select: !include ? select : undefined
+          select: !include ? select : undefined,
         });
       } catch (error) {
         this.handleError(error, 'Error soft deleting record');
@@ -287,7 +331,7 @@ export abstract class BaseCRUDService<T> {
         where: { id },
         data: { deleted_at: new Date(), deleted_by: connectedUserId },
         include,
-        select
+        select,
       });
 
       return updatedData;
@@ -297,19 +341,28 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericRestore(options: GenericDefaultOptions): Promise<T> {
-    let { id, connectedUserId, include, select } = options
+    const { id, connectedUserId, include, select } = options;
     this.initServices();
 
     const requestContext = BaseCRUDService.getRequestContextService();
-    const request: CustomRequest = requestContext.getContext();
+    let isTransaction = false;
 
-    if (!request.transaction) {
+    if (requestContext) {
+      const request: CustomRequest = requestContext.getContext();
+      isTransaction = request?.transaction || false;
+    }
+
+    if (!isTransaction) {
       try {
         return await this.model.update({
           where: { id },
-          data: { deleted_at: null, deleted_by: null, updated_by: connectedUserId },
+          data: {
+            deleted_at: null,
+            deleted_by: null,
+            updated_by: connectedUserId,
+          },
           include,
-          select: !include ? select : undefined
+          select: !include ? select : undefined,
         });
       } catch (error) {
         this.handleError(error, 'Error restoring record');
@@ -318,7 +371,17 @@ export abstract class BaseCRUDService<T> {
 
     try {
       const prisma = BaseCRUDService.getPrismaService();
-      const updatedData = await prisma.update({ model: this.modelName, where: { id }, data: { deleted_at: null, deleted_by: null, updated_by: connectedUserId }, include, select });
+      const updatedData = await prisma.update({
+        model: this.modelName,
+        where: { id },
+        data: {
+          deleted_at: null,
+          deleted_by: null,
+          updated_by: connectedUserId,
+        },
+        include,
+        select,
+      });
 
       return updatedData;
     } catch (error) {
@@ -337,10 +400,18 @@ export abstract class BaseCRUDService<T> {
   }
 
   async genericGroupBy(options: GenericGroupByOptions): Promise<any> {
-    let { by, whereClause, orderBy, skip, take } = options
+    const {
+      by,
+      whereClause,
+      orderBy,
+      skip: initialSkip,
+      take: initialTake,
+    } = options;
+    let skip = initialSkip;
+    let take = initialTake;
 
-    skip = skip || 0
-    take = take || 10
+    skip = skip || 0;
+    take = take || 10;
 
     this.initServices();
 
@@ -359,9 +430,16 @@ export abstract class BaseCRUDService<T> {
 
   // Méthodes abstraites à implémenter par les classes dérivées
   abstract create(data: any, connectedUserId?: string): Promise<T>;
-  abstract findAll(params?: IPaginationParams, whereClause?: any): Promise<PaginationVm>;
+  abstract findAll(
+    params?: IPaginationParams,
+    whereClause?: any,
+  ): Promise<PaginationVm>;
   abstract findOne(id: string): Promise<T>;
-  abstract update(id: string, data: Partial<any>, connectedUserId?: string): Promise<T>;
+  abstract update(
+    id: string,
+    data: Partial<any>,
+    connectedUserId?: string,
+  ): Promise<T>;
   abstract delete(id: string): Promise<T>;
   abstract softDelete(id: string, connectedUserId?: string): Promise<T>;
   abstract restore(id: string, connectedUserId?: string): Promise<T>;

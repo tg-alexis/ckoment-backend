@@ -1,12 +1,12 @@
+import { HttpException } from '@nestjs/common';
+import { AuditProperties } from 'src/commons/enums/audit_properties.enum';
+import { CustomRequest } from 'src/commons/interfaces/custom_request';
+import { RequestContextServiceProvider } from 'src/commons/providers/request-context-service.provider';
+import { ViewmodelServiceProvider } from 'src/commons/providers/viewmodel-service.provider';
+import { RequestContextService } from 'src/commons/services/request-context.service';
 import { ViewmodelService } from 'src/commons/services/viewmodel.service';
 import { AuditVm } from './audit.vm';
-import { ViewmodelServiceProvider } from 'src/commons/providers/viewmodel-service.provider';
-import { AuditProperties } from 'src/commons/enums/audit_properties.enum';
-import { HttpException } from '@nestjs/common';
 import { PaginationVm } from './pagination.vm';
-import { RequestContextService } from 'src/commons/services/request-context.service';
-import { RequestContextServiceProvider } from 'src/commons/providers/request-context-service.provider';
-import { CustomRequest } from 'src/commons/interfaces/custom_request';
 
 export class BaseVm extends AuditVm {
   private static viewmodelService: ViewmodelService;
@@ -36,19 +36,36 @@ export class BaseVm extends AuditVm {
   /**
    * Returns the RequestContextService instance.
    * If the instance does not exist, it will be created using the RequestContextServiceProvider.
-   * @returns The RequestContextService instance.
+   * @returns The RequestContextService instance or null if not available.
    */
-  private static getRequestCtxService(): RequestContextService {
-    if (!BaseVm.requestContextService) {
-      BaseVm.requestContextService = RequestContextServiceProvider.getService();
+  private static getRequestCtxService(): RequestContextService | null {
+    try {
+      if (!BaseVm.requestContextService) {
+        const service = RequestContextServiceProvider.getService();
+        if (!service) {
+          return null;
+        }
+        BaseVm.requestContextService = service;
+      }
+      return BaseVm.requestContextService;
+    } catch (_error) {
+      return null;
     }
-    return BaseVm.requestContextService;
   }
 
   private static getExtendedAudit(): boolean {
-    const request: CustomRequest = BaseVm.getRequestCtxService().getContext();
+    try {
+      const requestContextService = BaseVm.getRequestCtxService();
+      if (!requestContextService) {
+        return false;
+      }
 
-    return request.extended_audit;
+      const request: CustomRequest = requestContextService.getContext();
+      return request?.extended_audit || false;
+    } catch (_error) {
+      // Si le service n'est pas disponible ou n'a pas de contexte, retourner false
+      return false;
+    }
   }
 
   /**
@@ -64,7 +81,7 @@ export class BaseVm extends AuditVm {
   static async create<T extends BaseVm>(
     this: new (data: any) => T,
     data: any,
-    properties: AuditProperties[] = BaseVm.defaultAuditProperties
+    properties: AuditProperties[] = BaseVm.defaultAuditProperties,
   ): Promise<T> {
     const extendedAudit = BaseVm.getExtendedAudit();
 
@@ -76,7 +93,7 @@ export class BaseVm extends AuditVm {
     const additionalProperties = await viewmodelService.processAuditFields(
       data,
       extendedAudit,
-      properties
+      properties,
     );
     return new this({ ...data, ...additionalProperties });
   }
@@ -94,7 +111,7 @@ export class BaseVm extends AuditVm {
   static async createArray<T extends BaseVm>(
     this: new (data: any) => T,
     dataArray: any[],
-    properties: AuditProperties[] = BaseVm.defaultAuditProperties
+    properties: AuditProperties[] = BaseVm.defaultAuditProperties,
   ): Promise<T[]> {
     const extendedAudit = BaseVm.getExtendedAudit();
 
@@ -103,11 +120,11 @@ export class BaseVm extends AuditVm {
     }
 
     const viewmodelService = BaseVm.getVmService();
-    const promises = dataArray.map(async data => {
+    const promises = dataArray.map(async (data) => {
       const additionalProperties = await viewmodelService.processAuditFields(
         data,
         extendedAudit,
-        properties
+        properties,
       );
       return new this({ ...data, ...additionalProperties });
     });
@@ -128,7 +145,7 @@ export class BaseVm extends AuditVm {
   static async createPaginated<T extends BaseVm>(
     this: new (data: any) => T,
     data: PaginationVm,
-    properties: AuditProperties[] = BaseVm.defaultAuditProperties
+    properties: AuditProperties[] = BaseVm.defaultAuditProperties,
   ): Promise<PaginationVm> {
     const extendedAudit = BaseVm.getExtendedAudit();
 
@@ -139,11 +156,11 @@ export class BaseVm extends AuditVm {
     }
 
     const viewmodelService = BaseVm.getVmService();
-    const promises = result.map(async item => {
+    const promises = result.map(async (item) => {
       const additionalProperties = await viewmodelService.processAuditFields(
         item,
         extendedAudit,
-        properties
+        properties,
       );
       return new this({ ...item, ...additionalProperties });
     });

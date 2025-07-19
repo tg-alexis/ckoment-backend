@@ -1,26 +1,36 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, HttpException, HttpStatus } from '@nestjs/common';
-import { AdminService } from './admin.service';
-import { CreateAdminDto } from './dto/create-admin.dto';
-import { UpdateAdminDto } from './dto/update-admin.dto';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  HttpStatus,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Cacheable } from 'src/commons/decorators/cacheable.decorator';
+import { Pagination } from 'src/commons/decorators/pagination.decorator';
+import { ParamId } from 'src/commons/decorators/param-id.decorator';
 import { SetProfile } from 'src/commons/decorators/set-profile.decorator';
+import { ModelMappingTable } from 'src/commons/enums/model-mapping.enum';
 import { Profile } from 'src/commons/enums/profile.enum';
 import { AuthenticationGuard } from 'src/commons/guards/authentication.guard';
 import { AuthorizationGuard } from 'src/commons/guards/authorization.guard';
-import { UserVm } from 'src/commons/shared/viewmodels/user.vm';
 import { CustomRequest } from 'src/commons/interfaces/custom_request';
 import { PaginationVm } from 'src/commons/shared/viewmodels/pagination.vm';
-import { Pagination } from 'src/commons/decorators/pagination.decorator';
-import { Cacheable } from 'src/commons/decorators/cacheable.decorator';
-import { ParamId } from 'src/commons/decorators/param-id.decorator';
-import { ModelMappingTable } from 'src/commons/enums/model-mapping.enum';
+import { UserVm } from 'src/commons/shared/viewmodels/user.vm';
+import { AdminService } from './admin.service';
+import { CreateAdminDto } from './dto/create-admin.dto';
+import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
 @Controller('admins')
 export class AdminController {
-
-  constructor(private readonly adminService: AdminService) { }
+  constructor(private readonly adminService: AdminService) {}
 
   @SetProfile(Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -28,9 +38,11 @@ export class AdminController {
   @Post()
   async create(
     @Body() createAdminDto: CreateAdminDto,
-    @Req() req: CustomRequest
+    @Req() req: CustomRequest,
   ) {
-    return UserVm.create(await this.adminService.create(createAdminDto, req.user?.id));
+    return UserVm.create(
+      await this.adminService.create(createAdminDto, req.user?.id),
+    );
   }
 
   @SetProfile(Profile.SUPER_ADMIN)
@@ -39,10 +51,10 @@ export class AdminController {
   @Pagination()
   @Cacheable()
   @Get()
-  async findAll(
-    @Req() req: CustomRequest
-  ) {
-    return UserVm.createPaginated(await this.adminService.findAll(req.pagination));
+  async findAll(@Req() req: CustomRequest) {
+    return UserVm.createPaginated(
+      await this.adminService.findAll(req.pagination),
+    );
   }
 
   @SetProfile(Profile.SUPER_ADMIN)
@@ -51,7 +63,11 @@ export class AdminController {
   @Cacheable()
   @Get(':id')
   async findOne(
-    @ParamId({ model: ModelMappingTable.USER, errorMessage: "L'admin n'existe pas !" }) id: string,
+    @ParamId({
+      model: ModelMappingTable.USER,
+      errorMessage: "L'admin n'existe pas !",
+    })
+    id: string,
   ) {
     return UserVm.create(await this.adminService.findOne(id));
   }
@@ -61,24 +77,40 @@ export class AdminController {
   @ApiResponse({ status: 200, type: UserVm })
   @Patch(':id')
   async update(
-    @ParamId({ model: ModelMappingTable.USER, errorMessage: "L'admin n'existe pas !" }) id: string,
+    @ParamId({
+      model: ModelMappingTable.USER,
+      errorMessage: "L'admin n'existe pas !",
+    })
+    id: string,
     @Body() updateAdminDto: UpdateAdminDto,
-    @Req() req: CustomRequest
+    @Req() req: CustomRequest,
   ) {
-    return UserVm.create(await this.adminService.update(id, updateAdminDto, req.user?.id));
+    return UserVm.create(
+      await this.adminService.update(id, updateAdminDto, req.user?.id),
+    );
   }
 
   @Delete(':id')
   @SetProfile(Profile.SUPER_ADMIN)
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
-  @ApiResponse({ status: 204, description: "L'admin a été définitivement supprimée !" })
+  @ApiResponse({
+    status: 204,
+    description: "L'admin a été définitivement supprimée !",
+  })
   async remove(
-    @ParamId({ model: ModelMappingTable.USER, errorMessage: "L'admin n'existe pas !" }) id: string
+    @ParamId({
+      model: ModelMappingTable.USER,
+      errorMessage: "L'admin n'existe pas !",
+    })
+    id: string,
   ) {
     await this.adminService.delete(id);
 
     // Return success message with status code 204
-    throw new HttpException("La catégorie a été définitivement supprimée !", HttpStatus.NO_CONTENT);
+    throw new HttpException(
+      'La catégorie a été définitivement supprimée !',
+      HttpStatus.NO_CONTENT,
+    );
   }
 
   @Delete(':id/soft')
@@ -86,8 +118,12 @@ export class AdminController {
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @ApiResponse({ status: 200, type: UserVm })
   async softDelete(
-    @ParamId({ model: ModelMappingTable.USER, errorMessage: "L'admin n'existe pas !" }) id: string,
-    @Req() req: CustomRequest
+    @ParamId({
+      model: ModelMappingTable.USER,
+      errorMessage: "L'admin n'existe pas !",
+    })
+    id: string,
+    @Req() req: CustomRequest,
   ) {
     return UserVm.create(await this.adminService.softDelete(id, req.user?.id));
   }
@@ -97,8 +133,12 @@ export class AdminController {
   @UseGuards(AuthenticationGuard, AuthorizationGuard)
   @ApiResponse({ status: 200, type: UserVm })
   async restore(
-    @ParamId({ model: ModelMappingTable.USER, errorMessage: "L'admin n'existe pas !" }) id: string,
-    @Req() req: CustomRequest
+    @ParamId({
+      model: ModelMappingTable.USER,
+      errorMessage: "L'admin n'existe pas !",
+    })
+    id: string,
+    @Req() req: CustomRequest,
   ) {
     return UserVm.create(await this.adminService.restore(id, req.user?.id));
   }
